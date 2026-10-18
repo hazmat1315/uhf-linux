@@ -76,13 +76,16 @@ ApplicationWindow {
                     TextField {
                         id: pathField
                         Layout.fillWidth: true
-                        placeholderText: "Path to a local .m3u / .m3u8 file"
+                        placeholderText: "Local .m3u/.m3u8 file path, or http(s):// playlist URL"
                         color: win.textColor
                         selectByMouse: true
+                        enabled: !app.loading
+                        onAccepted: app.load(pathField.text)
                     }
                     Button {
-                        text: "Load"
-                        onClicked: app.loadM3uFile(pathField.text)
+                        text: app.loading ? "Loading…" : "Load"
+                        enabled: !app.loading
+                        onClicked: app.load(pathField.text)
                     }
                 }
             }

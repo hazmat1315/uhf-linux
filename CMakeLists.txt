@@ -26,8 +26,9 @@ if(APPLE)
     endif()
 endif()
 
-# Core domain depends only on Qt Core (+ Network/Sql later). No GUI here.
-find_package(Qt6 REQUIRED COMPONENTS Core)
+# Core domain depends on Qt Core; networking adds Network; the view-models run
+# fetches off the UI thread with Concurrent.
+find_package(Qt6 REQUIRED COMPONENTS Core Network Concurrent)
 
 enable_testing()
 # QtTest ships with Qt (already installed) -> zero extra install.
@@ -45,6 +46,7 @@ if(PkgConfig_FOUND)
 endif()
 
 add_subdirectory(src/core)
+add_subdirectory(src/net)
 if(UHF_HAVE_MPV)
     add_subdirectory(src/mpv)
 endif()

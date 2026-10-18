@@ -4,6 +4,7 @@
 
 #include "app/viewmodels/app_controller.h"
 #include "mpv/mpv_backend.h"
+#include "net/qt_http_client.h"
 
 int main(int argc, char* argv[])
 {
@@ -13,7 +14,8 @@ int main(int argc, char* argv[])
 
     // Windowed mpv: video plays in mpv's own OS window for this first slice.
     uhf::mpv::MpvBackend backend(uhf::mpv::MpvBackend::Mode::Windowed);
-    uhf::app::AppController controller(&backend);
+    uhf::net::QtHttpClient http;
+    uhf::app::AppController controller(&backend, &http);
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &controller);

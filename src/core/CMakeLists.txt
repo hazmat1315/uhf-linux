@@ -2,6 +2,8 @@ add_library(uhf_core STATIC
     sources/m3u_parser.cpp
     sources/xtream_api.cpp
     sources/xtream_mapper.cpp
+    sources/media_mapping.cpp
+    sources/playlist_service.cpp
     player/player_controller.cpp
     library/library_index.cpp
 )

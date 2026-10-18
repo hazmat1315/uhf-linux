@@ -1,16 +1,42 @@
 #include "app/viewmodels/app_controller.h"
 
 #include <QFile>
+#include <QtConcurrent>
 #include <QTextStream>
 #include <QUrl>
 
+#include "core/sources/http_client.h"
 #include "core/sources/m3u_parser.h"
+#include "core/sources/media_mapping.h"
+#include "core/sources/playlist_service.h"
 
 namespace uhf::app {
 
-AppController::AppController(core::IPlayerBackend* backend, QObject* parent)
-    : QObject(parent), m_player(backend)
+AppController::AppController(core::IPlayerBackend* backend, core::IHttpClient* http,
+                            QObject* parent)
+    : QObject(parent), m_player(backend), m_http(http)
 {
+    connect(&m_watcher, &QFutureWatcher<LoadResult>::finished, this, [this] {
+        const LoadResult r = m_watcher.result();
+        m_loading = false;
+        emit loadingChanged();
+        if (!r.error.isEmpty()) {
+            setStatus(r.error);
+            return;
+        }
+        setItems(r.items);
+    });
+}
+
+void AppController::load(const QString& input)
+{
+    const QString trimmed = input.trimmed();
+    if (trimmed.startsWith(QLatin1String("http://"))
+        || trimmed.startsWith(QLatin1String("https://"))) {
+        loadM3uUrl(trimmed);
+    } else {
+        loadM3uFile(trimmed);
+    }
 }
 
 void AppController::loadM3uFile(const QString& path)
@@ -26,27 +52,31 @@ void AppController::loadM3uFile(const QString& path)
 
     QTextStream stream(&file);
     stream.setEncoding(QStringConverter::Utf8);
-    const QString text = stream.readAll();
+    const core::M3UDocument doc = core::M3UParser::parse(stream.readAll());
+    setItems(core::liveItemsFromM3u(doc));
+}
 
-    const core::M3UDocument doc = core::M3UParser::parse(text);
-
-    QList<core::MediaItem> items;
-    items.reserve(doc.entries.size());
-    int n = 0;
-    for (const core::M3UEntry& e : doc.entries) {
-        core::MediaItem item;
-        item.id = e.tvgId.isEmpty() ? QString::number(n) : e.tvgId;
-        item.name = e.name;
-        item.mediaType = core::MediaType::Live;
-        item.categoryName = e.groupTitle;
-        item.url = QUrl(e.url);
-        item.logo = e.tvgLogo;
-        items.append(item);
-        ++n;
+void AppController::loadM3uUrl(const QString& url)
+{
+    if (!m_http) {
+        setStatus(QStringLiteral("Networking unavailable"));
+        return;
     }
+    if (m_loading)
+        return;
 
-    m_channels.setItems(items);
-    setStatus(QStringLiteral("Loaded %1 channels").arg(items.size()));
+    m_loading = true;
+    emit loadingChanged();
+    setStatus(QStringLiteral("Loading %1 …").arg(url));
+
+    core::IHttpClient* http = m_http;
+    const QUrl u(url);
+    m_watcher.setFuture(QtConcurrent::run([http, u]() -> LoadResult {
+        core::PlaylistService service(http);
+        QString error;
+        QList<core::MediaItem> items = service.loadM3u(u, &error);
+        return LoadResult{std::move(items), error};
+    }));
 }
 
 void AppController::play(int index)
@@ -59,6 +89,13 @@ void AppController::play(int index)
     m_nowPlaying = item->name;
     emit nowPlayingChanged();
     setStatus(QStringLiteral("Playing: %1").arg(item->name));
+}
+
+void AppController::setItems(QList<core::MediaItem> items)
+{
+    const int count = items.size();
+    m_channels.setItems(std::move(items));
+    setStatus(QStringLiteral("Loaded %1 channels").arg(count));
 }
 
 void AppController::setStatus(const QString& s)

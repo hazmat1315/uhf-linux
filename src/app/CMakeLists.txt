@@ -5,7 +5,7 @@ add_library(uhf_viewmodels STATIC
     viewmodels/channel_list_model.cpp
 )
 target_include_directories(uhf_viewmodels PUBLIC ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(uhf_viewmodels PUBLIC uhf_core Qt6::Core)
+target_link_libraries(uhf_viewmodels PUBLIC uhf_core Qt6::Core Qt6::Concurrent)
 
 # The GUI executable is only built when libmpv (the player backend) is present.
 if(UHF_HAVE_MPV)
@@ -20,6 +20,7 @@ if(UHF_HAVE_MPV)
     target_link_libraries(uhf_app PRIVATE
         uhf_viewmodels
         uhf_mpv
+        uhf_net
         Qt6::Gui
         Qt6::Qml
         Qt6::Quick
