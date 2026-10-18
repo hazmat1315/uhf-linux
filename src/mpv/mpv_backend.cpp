@@ -19,7 +19,7 @@ QByteArray urlToMpv(const QUrl& url)
 
 } // namespace
 
-MpvBackend::MpvBackend()
+MpvBackend::MpvBackend(Mode mode) : m_mode(mode)
 {
     // libmpv requires the C numeric locale; Qt may have changed it.
     std::setlocale(LC_NUMERIC, "C");
@@ -30,16 +30,22 @@ MpvBackend::MpvBackend()
         return;
     }
 
-    // Quiet, self-contained core. Rendering into a Qt surface is layered on
-    // separately; until then the core decodes headless (no A/V device needed),
-    // which also keeps the smoke test deterministic.
     mpv_set_option_string(m_mpv, "config", "no");
     mpv_set_option_string(m_mpv, "terminal", "no");
     mpv_set_option_string(m_mpv, "idle", "yes");
-    mpv_set_option_string(m_mpv, "vo", "null");
-    mpv_set_option_string(m_mpv, "ao", "null");
-    // Stay loaded at end-of-file so metadata (e.g. duration) remains readable.
-    mpv_set_option_string(m_mpv, "keep-open", "yes");
+
+    if (m_mode == Mode::Headless) {
+        // No A/V device; decodes only. Stay loaded at EOF so metadata
+        // (e.g. duration) remains readable — keeps the smoke test deterministic.
+        mpv_set_option_string(m_mpv, "vo", "null");
+        mpv_set_option_string(m_mpv, "ao", "null");
+        mpv_set_option_string(m_mpv, "keep-open", "yes");
+    } else {
+        // mpv manages its own OS window for video and a real audio device.
+        // (Embedding into the Qt Quick surface via the render API is a later
+        // refinement; this gets playback running first.)
+        mpv_set_option_string(m_mpv, "force-window", "yes");
+    }
 
     const int rc = mpv_initialize(m_mpv);
     if (rc < 0)
@@ -53,11 +59,6 @@ MpvBackend::~MpvBackend()
         mpv_terminate_destroy(m_mpv);
         m_mpv = nullptr;
     }
-}
-
-void MpvBackend::setHeadless(bool headless)
-{
-    m_headless = headless;
 }
 
 void MpvBackend::load(const core::StreamRequest& request)

@@ -15,16 +15,18 @@ namespace uhf::mpv {
 // playback and can run headless (vo/ao=null) for smoke tests.
 class MpvBackend : public core::IPlayerBackend {
 public:
-    MpvBackend();
+    enum class Mode {
+        Headless, // no A/V device; decodes only (tests, servers)
+        Windowed, // mpv opens its own OS window for video + audio output
+    };
+
+    explicit MpvBackend(Mode mode = Mode::Headless);
     ~MpvBackend() override;
 
     MpvBackend(const MpvBackend&) = delete;
     MpvBackend& operator=(const MpvBackend&) = delete;
 
     bool initialized() const { return m_initialized; }
-
-    // Force headless decoding (no audio/video device) — used by tests.
-    void setHeadless(bool headless);
 
     void load(const core::StreamRequest& request) override;
     void play() override;
@@ -39,7 +41,7 @@ public:
 private:
     mpv_handle* m_mpv = nullptr;
     bool m_initialized = false;
-    bool m_headless = false;
+    Mode m_mode = Mode::Headless;
 };
 
 } // namespace uhf::mpv

@@ -46,8 +46,7 @@ private slots:
     // Loading + playing a real file drives decode to a known duration.
     void loadsAndDecodesFile()
     {
-        MpvBackend backend;
-        backend.setHeadless(true);
+        MpvBackend backend; // default: headless
         QVERIFY(backend.initialized());
 
         StreamRequest req;

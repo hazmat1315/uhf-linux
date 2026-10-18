@@ -10,6 +10,22 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+# Work around Qt6's FindWrapOpenGL hard-coding "-framework AGL", which newer
+# macOS SDKs have removed. Qt's module early-returns if this target already
+# exists, so we pre-create it (GLOBAL) linking only the OpenGL framework.
+if(APPLE)
+    find_package(OpenGL QUIET)
+    if(NOT TARGET WrapOpenGL::WrapOpenGL)
+        add_library(WrapOpenGL::WrapOpenGL INTERFACE IMPORTED GLOBAL)
+        if(TARGET OpenGL::GL)
+            target_link_libraries(WrapOpenGL::WrapOpenGL INTERFACE OpenGL::GL)
+        else()
+            target_link_libraries(WrapOpenGL::WrapOpenGL INTERFACE "-framework OpenGL")
+        endif()
+        set(WrapOpenGL_FOUND ON)
+    endif()
+endif()
+
 # Core domain depends only on Qt Core (+ Network/Sql later). No GUI here.
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
@@ -32,4 +48,5 @@ add_subdirectory(src/core)
 if(UHF_HAVE_MPV)
     add_subdirectory(src/mpv)
 endif()
+add_subdirectory(src/app)
 add_subdirectory(tests)
