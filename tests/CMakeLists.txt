@@ -7,6 +7,7 @@ endfunction()
 
 uhf_add_test(test_m3u_parser)
 uhf_add_test(test_xtream_api)
+uhf_add_test(test_xtream_mapper)
 uhf_add_test(test_player_controller)
 uhf_add_test(test_library_index)
 
